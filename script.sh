@@ -21,7 +21,7 @@ create_instance
 
 function terraform_output() {
     terraform output -json > output.json
-    sudo apt-get install jq
+    sudo apt-get install jq -y
     ec2_ip=$(jq -r '.ec2.value' output.json)
     cat <<EOF > ../ansible/hosts.yml
 vm ansible_host=${ec2_ip}

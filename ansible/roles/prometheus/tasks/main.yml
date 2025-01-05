@@ -1,0 +1,71 @@
+---
+- name: Download Prometheus tar.gz
+  ansible.builtin.get_url:
+    url: "https://github.com/prometheus/prometheus/releases/download/v2.45.0/prometheus-2.45.0.linux-amd64.tar.gz"
+    dest: "/tmp/prometheus.tar.gz"
+
+- name: Extract Prometheus tar.gz
+  ansible.builtin.unarchive:
+    src: "/tmp/prometheus.tar.gz"
+    dest: "/tmp"
+    remote_src: yes
+
+- name: Add the user prometheus
+  ansible.builtin.user:
+    name: prometheus
+    shell: /bin/false
+    system: true
+    create_home: false
+
+
+- name: Create Prometheus directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: prometheus
+    group: prometheus
+    mode: '0755'
+    recurse: yes
+  loop:
+    - /etc/prometheus
+    - /data
+
+- name: Move Prometheus binaries
+  ansible.builtin.copy:
+    src: /tmp/prometheus-2.45.0.linux-amd64/{{ item }}
+    dest: "/usr/local/bin/{{ item }}"
+    owner: prometheus
+    group: prometheus
+    mode: '0755'
+    remote_src: yes
+  loop:
+    - prometheus
+    - promtool
+    
+- name: Copy files
+  ansible.builtin.copy:
+    src: /tmp/prometheus-2.45.0.linux-amd64/{{ item }}
+    dest: /etc/prometheus/
+    remote_src: yes
+  loop:
+    - consoles
+    - console_libraries
+    - prometheus.yml
+
+
+- name: Create Prometheus service
+  ansible.builtin.template:
+    src: "roles/prometheus/templates/prometheus.service.j2"
+    dest: "/etc/systemd/system/prometheus.service"
+
+
+- name: Start and enable Prometheus service
+  ansible.builtin.systemd:
+    name: prometheus
+    enabled: yes
+    state: started
+  # retries: 3
+  # delay: 10
+  # register: result
+  # until: result is succeeded
+  
